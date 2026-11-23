@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Castle 합주실</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--fg:#1c1c1e;--mut:#8e8e93;--ac:#007aff;--ln:#e5e5ea;--st:#ffb800}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--fg:#f2f2f7;--ln:#38383a}}
+*{box-sizing:border-box}html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px calc(170px + env(safe-area-inset-bottom));max-width:640px;margin:auto}
+h1{font-size:28px;margin:8px 2px 14px;letter-spacing:-.5px}
+.seg{display:flex;background:rgba(120,120,128,.16);border-radius:10px;padding:2px;margin-bottom:16px}
+.seg button{flex:1;border:0;background:none;color:var(--fg);padding:7px;border-radius:8px;font-size:14px;font-weight:600}
+.seg button.on{background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.card{background:var(--card);border-radius:18px;padding:4px 16px;margin-bottom:14px}
+.pad{padding:14px 16px}.mut{color:var(--mut);font-size:13px}
+.row{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:.5px solid var(--ln)}
+.row:first-child{border-top:0}.gr{flex:1;min-width:0}
+.rw{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--ac);color:#fff;border:0;border-radius:12px;padding:11px 18px;font-weight:600;width:100%;margin:6px 0}
+.gh{background:rgba(0,122,255,.12);color:var(--ac);border:0;border-radius:10px;padding:8px 12px;font-weight:600}
+.sm{font-size:13px;padding:6px 10px}
+.pl{width:36px;height:36px;border-radius:50%;border:0;background:var(--ac);color:#fff;flex:none}
+.star{border:0;background:none;color:var(--mut);font-size:15px}.star.on{color:var(--st)}
+input,select{font:inherit;background:var(--bg);color:var(--fg);border:0;border-radius:10px;padding:9px 12px;max-width:100%}
+select{width:100%;margin-bottom:12px;font-weight:600}
+input[type=range]{width:100%;padding:0;background:none;accent-color:var(--ac)}
+input[type=checkbox]{width:auto}.nm{width:100%}.tm{width:84px;text-align:center}
+.gr .nm{font-weight:600}
+#bar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));max-width:616px;margin:auto;background:rgba(255,255,255,.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:22px;padding:12px 16px;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+@media(prefers-color-scheme:dark){#bar{background:rgba(44,44,46,.85)}}
+#bar[hidden],[hidden]{display:none!important}
+.top{display:flex;align-items:center;gap:10px}.top b{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pp{width:42px;height:42px;border-radius:50%;border:0;background:var(--ac);color:#fff;font-size:16px}
+.chips{display:flex;gap:6px;justify-content:space-between;align-items:center}
+summary{color:var(--ac);font-size:14px;margin:8px 0}
+.cal{padding:12px 12px 8px}.ch{display:flex;align-items:center;justify-content:space-between;margin:2px 4px 8px;font-weight:700}
+.ch button{border:0;background:none;color:var(--ac);font-size:22px;padding:2px 12px}
+.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cg .w{color:var(--mut);font-size:12px;padding:4px 0}
+.cg button{border:0;background:none;color:var(--fg);height:42px;border-radius:50%;font-size:15px;position:relative}
+.cg button.has{font-weight:700}.cg button.has::after{content:"";position:absolute;left:50%;bottom:5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--ac)}
+.cg button.sel{background:var(--ac);color:#fff}.cg button.sel::after{background:#fff}.cg button:disabled{opacity:.3}
+</style></head><body>
+<h1>🏰 Castle 합주실</h1>
+<div class="seg" id="tabs"><button class="on" data-t="U">이용자</button><button data-t="A">관리자</button></div>
+
+<section id="U">
+  <div class="card cal"><div class="ch"><button id="pm">‹</button><span id="mt"></span><button id="nx">›</button></div><div class="cg" id="cg"></div></div>
+  <div class="rw"><b id="dl" style="margin-left:4px"></b><button class="gh sm" id="stb" style="margin-left:auto">⭐ 보관곡 모음</button></div>
+  <div class="card" id="ul"></div>
+</section>
+
+<section id="A" hidden>
+  <div id="lock" class="card pad"><div class="rw"><input id="pw" type="password" placeholder="관리자 비밀번호"><button class="gh" id="unl">열기</button></div></div>
+  <div id="adm" hidden>
+    <div class="card pad">
+      <b>1. 녹음 분석하고 올리기</b>
+      <div class="rw"><input type="file" id="f" accept="audio/*,.m4a"></div>
+      <div class="rw"><span class="mut">합주 날짜</span><input type="date" id="dt"></div>
+      <details><summary>감지 설정</summary>
+        <div class="mut">카운트 감도(dB) <b id="thrv">12</b></div><input type="range" id="thr" min="6" max="25" value="12">
+        <div class="mut">끝 판정 음량 하락(dB) <b id="dropv">12</b></div><input type="range" id="drop" min="5" max="25" value="12">
+        <div class="mut">끝 판정 유지(초) <b id="holdv">4</b></div><input type="range" id="hold" min="2" max="10" value="4">
+        <div class="mut">카운트 직전 조용함(dB, 0=끄기) <b id="prev">5</b></div><input type="range" id="pre" min="0" max="15" value="5">
+      </details>
+      <button class="btn" id="go" disabled>분석 시작</button>
+      <div class="mut" id="st"></div>
+    </div>
+    <div id="sg"></div>
+    <h3 style="margin:18px 4px 8px">2. 올라간 곡 관리</h3>
+    <div class="card" id="ml"></div>
+  </div>
+</section>
+
+<div id="bar" hidden>
+  <div class="top"><button class="pp" id="pp">▶</button><b id="bt"></b><span class="mut" id="tm"></span></div>
+  <input type="range" id="sl" min="0" max="1000" value="0" style="margin:8px 0 4px">
+  <div class="chips"><button class="gh sm" data-p="0">처음</button><button class="gh sm" data-p=".25">1/4</button><button class="gh sm" data-p=".5">중간</button><button class="gh sm" data-p=".75">3/4</button><button class="gh sm" data-p=".92">끝부분</button></div>
+</div>
+<audio id="au"></audio><audio id="ad"></audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+import {getFirestore,collection,getDocs,addDoc,updateDoc,deleteDoc,doc,increment} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+import {getStorage,ref,uploadBytesResumable,getDownloadURL,deleteObject} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-storage.js";
+
+const app=initializeApp({apiKey:"AIzaSyDozGb2vtXZxr8PPz0UdZFyv0q98SJEqBI",authDomain:"castle-29862.firebaseapp.com",projectId:"castle-29862",storageBucket:"castle-29862.firebasestorage.app",messagingSenderId:"943100214332",appId:"1:943100214332:web:313b6d8ec62aaed2a1d739"});
+const db=getFirestore(app),sto=getStorage(app);
+sto.maxUploadRetryTime=30000;
+
+/* ★ 설정 */
+const ADMIN_PW='castle1234';   // 관리자 비밀번호 (꼭 바꾸세요)
+const CAP_MB=3000;             // 이 용량을 넘으면 별표 없는 오래된 곡부터 자동 삭제
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=t=>{t=Math.max(0,t||0);return Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0')};
+const fmtd=t=>{const m=Math.floor(t/60);return m+':'+(t-m*60).toFixed(1).padStart(4,'0')};
+const parse=s=>{const p=s.split(':');return p.length>1?(+p[0])*60+(+p[1]):+s};
+const wait=()=>new Promise(r=>setTimeout(r,15));
+let songs=[],cur=null,stars=new Set();
+try{stars=new Set(JSON.parse(localStorage.getItem('stars')||'[]'))}catch(e){}
+
+/* 탭 */
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#U').hidden=b.dataset.t!=='U';$('#A').hidden=b.dataset.t!=='A'};
+$('#unl').onclick=()=>{if($('#pw').value===ADMIN_PW){$('#lock').hidden=true;$('#adm').hidden=false}else alert('비밀번호가 달라요')};
+['thr','drop','hold','pre'].forEach(k=>$('#'+k).oninput=e=>$('#'+k+'v').textContent=e.target.value);
+$('#dt').value=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+
+/* 데이터 */
+async function load(){
+  try{const q=await getDocs(collection(db,'songs'));songs=q.docs.map(d=>({id:d.id,...d.data()}))}
+  catch(e){$('#ul').innerHTML='<div class="pad mut">불러오기 실패: '+esc(e.message)+'</div>';return}
+  renderU();renderM();
+}
+async function delSong(s){
+  try{await deleteObject(ref(sto,s.path))}catch(e){}
+  await deleteDoc(doc(db,'songs',s.id));songs=songs.filter(x=>x.id!==s.id);
+}
+async function ensureSpace(need){
+  const cap=CAP_MB*1048576;let tot=songs.reduce((a,s)=>a+(s.size||0),0);
+  const old=songs.filter(s=>!(s.stars>0)).sort((a,b)=>(a.created||0)-(b.created||0));
+  while(tot+need>cap&&old.length){const s=old.shift();tot-=s.size||0;await delSong(s)}
+  if(tot+need>cap)throw new Error('용량 부족: 별표로 보관된 곡이 너무 많아요');
+}
+
+/* 이용자 화면 (달력) */
+let ym=new Date(),selD=null,starMode=false;
+const vis=()=>songs.filter(s=>s.visible!==false);
+function renderU(){
+  if(!selD||!vis().some(s=>s.date===selD)){const ds=vis().map(s=>s.date).sort();selD=ds[ds.length-1]||null;if(selD)ym=new Date(selD+'T00:00:00')}
+  drawCal();drawU();
+}
+function drawCal(){
+  const y=ym.getFullYear(),m=ym.getMonth(),has=new Set(vis().map(s=>s.date));
+  $('#mt').textContent=`${y}년 ${m+1}월`;
+  let h=['일','월','화','수','목','금','토'].map(d=>`<div class="w">${d}</div>`).join('');
+  for(let i=0,f=new Date(y,m,1).getDay();i<f;i++)h+='<div></div>';
+  for(let d=1,n=new Date(y,m+1,0).getDate();d<=n;d++){
+    const k=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    h+=`<button data-d="${k}" class="${has.has(k)?'has':''} ${k===selD&&!starMode?'sel':''}" ${has.has(k)?'':'disabled'}>${d}</button>`}
+  $('#cg').innerHTML=h;
+}
+function drawU(){
+  const l=vis().filter(s=>starMode?s.stars>0:s.date===selD).sort((a,b)=>(a.created||0)-(b.created||0));
+  $('#dl').textContent=starMode?'⭐ 보관곡 모음':(selD?selD.replace(/-/g,'.')+' 합주':'날짜를 선택하세요');
+  $('#stb').textContent=starMode?'달력으로':'⭐ 보관곡 모음';
+  $('#ul').innerHTML=l.length?l.map(s=>`<div class="row" data-id="${s.id}"><button class="pl">▶</button><div class="gr"><b>${esc(s.name)}</b><div class="mut">${fmt(s.dur)}${starMode?' · '+s.date:''}</div></div><button class="star ${stars.has(s.id)?'on':''}">${stars.has(s.id)?'★':'☆'} ${s.stars||0}</button></div>`).join(''):'<div class="pad mut">곡이 없어요</div>';
+}
+$('#pm').onclick=()=>{ym=new Date(ym.getFullYear(),ym.getMonth()-1,1);drawCal()};
+$('#nx').onclick=()=>{ym=new Date(ym.getFullYear(),ym.getMonth()+1,1);drawCal()};
+$('#cg').onclick=e=>{const b=e.target.closest('button[data-d]');if(!b)return;selD=b.dataset.d;starMode=false;drawCal();drawU()};
+$('#stb').onclick=()=>{starMode=!starMode;drawCal();drawU()};
+$('#ul').onclick=async e=>{
+  const r=e.target.closest('.row');if(!r)return;const s=songs.find(x=>x.id===r.dataset.id);if(!s)return;
+  if(e.target.closest('.star')){
+    const on=!stars.has(s.id);on?stars.add(s.id):stars.delete(s.id);
+    s.stars=Math.max(0,(s.stars||0)+(on?1:-1));
+    try{localStorage.setItem('stars',JSON.stringify([...stars]))}catch(x){}
+    drawU();
+    try{await updateDoc(doc(db,'songs',s.id),{stars:increment(on?1:-1)})}catch(x){alert('별표 저장 실패')}
+    return}
+  play(s);
+};
+
+/* 플레이어 */
+const au=$('#au');
+function play(s){cur=s;$('#bt').textContent=s.name;$('#bar').hidden=false;au.src=s.url;au.play()}
+au.ontimeupdate=()=>{if(!cur)return;$('#sl').value=au.currentTime/cur.dur*1000;$('#tm').textContent=fmt(au.currentTime)+' / '+fmt(cur.dur)};
+au.onplay=()=>$('#pp').textContent='⏸';au.onpause=()=>$('#pp').textContent='▶';
+$('#sl').oninput=e=>{if(cur)au.currentTime=e.target.value/1000*cur.dur};
+$('#pp').onclick=()=>au.paused?au.play():au.pause();
+$('#bar').querySelector('.chips').onclick=e=>{const b=e.target.closest('button');if(b&&cur)au.currentTime=+b.dataset.p*cur.dur};
+
+/* 관리자: 올라간 곡 관리 */
+function renderM(){
+  $('#ml').innerHTML=songs.length?[...songs].sort((a,b)=>(b.created||0)-(a.created||0)).map(s=>`<div class="row" data-id="${s.id}"><div class="gr"><input class="nm" value="${esc(s.name)}"><div class="mut">${s.date} · ${fmt(s.dur)} · ★${s.stars||0}</div></div><label class="mut"><input type="checkbox" class="vz" ${s.visible!==false?'checked':''}> 노출</label><button class="gh sm dl">삭제</button></div>`).join(''):'<div class="pad mut">아직 곡이 없어요</div>';
+}
+$('#ml').onchange=async e=>{
+  const r=e.target.closest('.row'),s=songs.find(x=>x.id===r.dataset.id);if(!s)return;
+  if(e.target.classList.contains('nm')){s.name=e.target.value;await updateDoc(doc(db,'songs',s.id),{name:s.name})}
+  if(e.target.classList.contains('vz')){s.visible=e.target.checked;await updateDoc(doc(db,'songs',s.id),{visible:s.visible})}
+  renderU();
+};
+$('#ml').onclick=async e=>{
+  if(!e.target.classList.contains('dl'))return;
+  const s=songs.find(x=>x.id===e.target.closest('.row').dataset.id);
+  if(s&&confirm(`"${s.name}" 곡을 삭제할까요?`)){await delSong(s);renderM();renderU()}
+};
+
+/* 관리자: 분석 */
+const SR=22050,F=220,FPS=SR/F;
+let file,url,mono,E,H,dur=0,segs=[];
+const ad=$('#ad');
+$('#f').onchange=e=>{
+  file=e.target.files[0];if(!file)return;mono=null;
+  if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(file);ad.src=url;$('#go').disabled=false;
+};
+const st=t=>$('#st').textContent=t;
+$('#go').onclick=async()=>{
+  $('#go').disabled=true;
+  try{
+    if(!mono){
+      st('디코딩 중… (1시간 파일은 1~2분 걸려요)');await wait();
+      const ctx=new AudioContext({sampleRate:SR});
+      const buf=await ctx.decodeAudioData(await file.arrayBuffer());
+      const n=buf.length,c=buf.numberOfChannels;mono=new Float32Array(n);
+      for(let ch=0;ch<c;ch++){const d=buf.getChannelData(ch);for(let i=0;i<n;i++)mono[i]+=d[i]/c}
+      ctx.close();dur=n/SR;
+      st('소리 특징 계산 중…');await wait();
+      const nf=Math.floor(n/F);E=new Float32Array(nf);H=new Float32Array(nf);
+      for(let i=0;i<nf;i++){let e=0,h=0,o=i*F,p=mono[o];
+        for(let j=1;j<F;j++){const x=mono[o+j];e+=x*x;const d=x-p;h+=d*d;p=x}
+        E[i]=e/F;H[i]=h/F}
+    }
+    find();
+  }catch(err){st('오류: '+err.message)}
+  $('#go').disabled=false;$('#go').textContent='설정 바꿔 다시 찾기';
+};
+function find(){
+  const thr=+$('#thr').value,drop=+$('#drop').value,hold=+$('#hold').value,preDb=+$('#pre').value;
+  const nf=E.length,h=new Float32Array(nf),O=new Float32Array(nf);
+  for(let i=0;i<nf;i++)h[i]=10*Math.log10(H[i]+1e-9);
+  for(let i=4;i<nf;i++)O[i]=h[i]-Math.max(h[i-1],h[i-2],h[i-3],h[i-4]);
+  const T=[];
+  for(let i=5;i<nf-1;i++)if(O[i]>thr&&O[i]>=O[i-1]&&O[i]>=O[i+1]){const t=i/FPS;if(!T.length||t-T[T.length-1]>0.15)T.push(t)}
+  const B=50,nb=Math.floor(nf/B),L=new Float32Array(nb);
+  for(let k=0;k<nb;k++){let s=0;for(let i=k*B;i<(k+1)*B;i++)s+=E[i];L[k]=10*Math.log10(s/B+1e-9)}
+  const floor=[...L].sort((a,b)=>a-b)[Math.floor(nb*0.2)];
+  const ins=[];let last=-1e9;
+  for(let a=0;a<T.length;a++){
+    const t1=T[a];if(t1<last+25)continue;
+    for(let b=a+1;b<T.length&&T[b]-t1<=1.2;b++){
+      const iv=T[b]-t1;if(iv<0.25)continue;const tol=Math.max(0.05,iv*0.12);
+      const has=t=>T.some(x=>Math.abs(x-t)<=tol);
+      if(has(t1+2*iv)&&has(t1+3*iv)){
+        const db=t1+4*iv,bi=Math.floor(db/0.5);let m=0,c=0;
+        for(let k=bi;k<bi+8&&k<nb;k++){m+=L[k];c++}
+        if(c&&m/c>floor+6&&(()=>{if(preDb<=0)return true;const bp=Math.floor(t1/0.5);let a=0,n=0;for(let k=bp-6;k<bp;k++)if(k>=0){a+=L[k];n++}return n<3||m/c-a/n>=preDb})()){ins.push({t:t1,db});last=t1;break}
+      }}}
+  segs=[];
+  ins.forEach((x,k)=>{
+    const s0=Math.max(0,x.t-0.3),limit=ins[k+1]?ins[k+1].t-0.3:dur;
+    const bi0=Math.floor(x.db/0.5),bEnd=Math.floor(limit/0.5);
+    let end=limit,run=0,rs=0;
+    for(let j=bi0+40;j<bEnd;j++){
+      const w=[...L.slice(bi0,j)].sort((a,b)=>a-b),base=w[Math.floor(w.length*0.8)];
+      if(L[j]<base-drop){if(!run)rs=j;run++;if(run*0.5>=hold){end=rs*0.5+0.5;break}}else run=0;
+    }
+    if(end-s0>=20)segs.push({s:s0,e:end,name:'곡 '+(segs.length+1)+'번',vis:true});
+  });
+  st(segs.length?`곡 ${segs.length}개를 찾았어요. 듣고 확인한 뒤 업로드하세요.`:'곡을 찾지 못했어요. 감지 설정에서 카운트 감도를 낮춰 보세요.');
+  renderS();
+}
+
+/* 관리자: 구간 확인·미리듣기 */
+let act=null,stopAt=null;
+const adj=k=>[-10,-5,-1,1,5,10].map(d=>`<button class="gh sm" data-a="${k}" data-d="${d}">${d>0?'+':'−'}${Math.abs(d)}</button>`).join('');
+function renderS(){
+  $('#sg').innerHTML=segs.map((s,i)=>s.done?`<div class="card pad" data-i="${i}"><b>${esc(s.name)}</b> <span class="mut">· 노출 중 ✓</span></div>`:`<div class="card pad" data-i="${i}">
+    <div class="rw"><input class="nm" value="${esc(s.name)}"></div>
+    <div class="rw"><input class="tm ts" value="${fmtd(s.s)}"> ~ <input class="tm te" value="${fmtd(s.e)}"><span class="mut">${Math.round(s.e-s.s)}초</span></div>
+    <input type="range" class="ps" min="0" max="1000" value="0">
+    <div class="rw"><span class="mut" style="width:100%">시작점 이동(초) — 누르면 바로 들려요</span>${adj('s')}</div>
+    <div class="rw"><span class="mut" style="width:100%">끝점 이동(초)</span>${adj('e')}</div>
+    <div class="rw"><button class="gh sm" data-a="pp">▶ 재생</button><button class="gh sm" data-a="hs">시작부</button><button class="gh sm" data-a="he">끝부</button><button class="gh sm" data-a="ss">여기부터 시작</button><button class="gh sm" data-a="se">여기까지 끝</button>${i<segs.length-1?'<button class="gh sm" data-a="mg">다음 곡과 합치기</button>':''}<button class="gh sm" data-a="rm">제외</button></div>
+    <button class="btn" data-a="pub">🔊 이 곡 노출하기</button></div>`).join('');
+}
+function playFrom(i,from,to){act=i;stopAt=to;ad.currentTime=from;ad.play()}
+ad.ontimeupdate=()=>{
+  if(act===null||!segs[act])return;const s=segs[act],t=ad.currentTime;
+  if(stopAt!==null&&t>=stopAt){ad.pause();return}
+  const p=document.querySelector(`#sg [data-i="${act}"] .ps`);if(p)p.value=Math.max(0,Math.min(1000,(t-s.s)/(s.e-s.s)*1000));
+};
+$('#sg').onchange=e=>{
+  const c=e.target.closest('.card');if(!c)return;const s=segs[+c.dataset.i],cl=e.target.classList;
+  if(cl.contains('nm'))s.name=e.target.value;
+  else if(cl.contains('ts')){s.s=Math.max(0,parse(e.target.value));renderS()}
+  else if(cl.contains('te')){s.e=Math.min(dur,parse(e.target.value));renderS()}
+};
+$('#sg').oninput=e=>{
+  if(!e.target.classList.contains('ps'))return;
+  const i=+e.target.closest('.card').dataset.i,s=segs[i];
+  playFrom(i,s.s+e.target.value/1000*(s.e-s.s),s.e);
+};
+$('#sg').onclick=e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const i=+b.closest('.card').dataset.i,s=segs[i],a=b.dataset.a,d=+b.dataset.d;
+  if(a==='pp'){if(act===i&&!ad.paused)ad.pause();else{const p=b.closest('.card').querySelector('.ps').value;playFrom(i,s.s+p/1000*(s.e-s.s),s.e)}}
+  else if(a==='hs')playFrom(i,s.s,s.s+6);
+  else if(a==='he')playFrom(i,Math.max(s.s,s.e-6),s.e);
+  else if(a==='s'){s.s=Math.max(0,Math.min(s.e-5,s.s+d));renderS();playFrom(i,s.s,s.s+6)}
+  else if(a==='e'){s.e=Math.min(dur,Math.max(s.s+5,s.e+d));renderS();playFrom(i,Math.max(s.s,s.e-6),s.e)}
+  else if(a==='ss'&&act===i){s.s=ad.currentTime;renderS()}
+  else if(a==='se'&&act===i){s.e=ad.currentTime;renderS()}
+  else if(a==='mg'){s.e=segs[i+1].e;segs.splice(i+1,1);renderS()}
+  else if(a==='rm'){segs.splice(i,1);act=null;renderS()}
+  else if(a==='pub')publish(s,b);
+};
+
+/* 곡 하나를 mp3로 변환해 업로드 → 이용자에게 노출 */
+async function enc(s){
+  const a=Math.floor(s.s*SR),b=Math.min(mono.length,Math.floor(s.e*SR));
+  let pk=0;for(let i=a;i<b;i+=3){const v=Math.abs(mono[i]);if(v>pk)pk=v}
+  const g=Math.min(3,0.9/(pk||1)),m=new lamejs.Mp3Encoder(1,SR,96),out=[];
+  for(let i=a,c=0;i<b;i+=1152,c++){
+    const n=Math.min(1152,b-i),x=new Int16Array(n);
+    for(let j=0;j<n;j++){const v=Math.max(-1,Math.min(1,mono[i+j]*g));x[j]=v<0?v*32768:v*32767}
+    const d=m.encodeBuffer(x);if(d.length)out.push(d);
+    if(c%300===0)await wait();
+  }
+  out.push(m.flush());return new Blob(out,{type:'audio/mpeg'});
+}
+const upl=(r,blob,cb)=>new Promise((res,rej)=>{
+  const t=uploadBytesResumable(r,blob,{contentType:'audio/mpeg'});
+  t.on('state_changed',x=>cb(Math.round(x.bytesTransferred/x.totalBytes*100)),rej,res)});
+async function publish(s,btn){
+  const date=$('#dt').value;if(!date)return alert('합주 날짜를 선택해 주세요');
+  btn.disabled=true;
+  try{
+    btn.textContent='mp3 변환 중…';const blob=await enc(s);await ensureSpace(blob.size);
+    const path=`songs/${date}/${Date.now()}.mp3`,r=ref(sto,path);
+    await upl(r,blob,p=>btn.textContent='업로드 중 '+p+'%');
+    const u=await getDownloadURL(r);
+    const data={date,name:s.name,url:u,path,dur:s.e-s.s,size:blob.size,visible:true,stars:0,created:Date.now()};
+    const d=await addDoc(collection(db,'songs'),data);songs.push({id:d.id,...data});
+    s.done=true;st(`"${s.name}" 노출 완료`);renderS();renderU();renderM();
+  }catch(err){
+    btn.disabled=false;btn.textContent='🔊 이 곡 노출하기';
+    st('업로드 실패: '+(err.code||'')+' '+err.message+' — Storage 설정/네트워크를 확인해 주세요');
+  }
+}
+
+load();
+</script></body></html>
