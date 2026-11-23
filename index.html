@@ -83,7 +83,7 @@ summary{color:var(--ac);font-size:14px;margin:8px 0}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
-import {getFirestore,collection,getDocs,addDoc,updateDoc,deleteDoc,doc,increment} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+import {getFirestore,collection,getDocs,addDoc,setDoc,updateDoc,deleteDoc,doc,increment} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import {getStorage,ref,uploadBytesResumable,getDownloadURL,deleteObject} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-storage.js";
 
 const app=initializeApp({apiKey:"AIzaSyDozGb2vtXZxr8PPz0UdZFyv0q98SJEqBI",authDomain:"castle-29862.firebaseapp.com",projectId:"castle-29862",storageBucket:"castle-29862.firebasestorage.app",messagingSenderId:"943100214332",appId:"1:943100214332:web:313b6d8ec62aaed2a1d739"});
@@ -92,7 +92,9 @@ sto.maxUploadRetryTime=30000;
 
 /* ★ 설정 */
 const ADMIN_PW='castle1234';   // 관리자 비밀번호 (꼭 바꾸세요)
-const CAP_MB=3000;             // 이 용량을 넘으면 별표 없는 오래된 곡부터 자동 삭제
+const STORE='fs';              // 'fs' = Firestore에 저장(무료·Storage 불필요), 'storage' = Firebase Storage
+const CAP_MB=800;              // 이 용량을 넘으면 별표 없는 오래된 곡부터 자동 삭제 (Storage 모드면 3000 정도)
+const PART=600000;             // Firestore 저장 시 조각 크기
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -118,7 +120,8 @@ async function load(){
   renderU();renderM();
 }
 async function delSong(s){
-  try{await deleteObject(ref(sto,s.path))}catch(e){}
+  if(s.store==='fs'){const q=await getDocs(collection(db,'songs',s.id,'parts'));for(const d of q.docs)await deleteDoc(d.ref)}
+  else try{await deleteObject(ref(sto,s.path))}catch(e){}
   await deleteDoc(doc(db,'songs',s.id));songs=songs.filter(x=>x.id!==s.id);
 }
 async function ensureSpace(need){
@@ -169,7 +172,21 @@ $('#ul').onclick=async e=>{
 
 /* 플레이어 */
 const au=$('#au');
-function play(s){cur=s;$('#bt').textContent=s.name;$('#bar').hidden=false;au.src=s.url;au.play()}
+const blobs={};
+async function play(s){
+  cur=s;$('#bt').textContent=s.name;$('#bar').hidden=false;
+  if(s.store==='fs'){
+    if(!blobs[s.id]){
+      $('#tm').textContent='불러오는 중…';
+      try{const q=await getDocs(collection(db,'songs',s.id,'parts'));
+        const ps=q.docs.map(d=>d.data()).sort((a,b)=>a.i-b.i).map(p=>Uint8Array.from(atob(p.d),c=>c.charCodeAt(0)));
+        blobs[s.id]=URL.createObjectURL(new Blob(ps,{type:'audio/mpeg'}))}
+      catch(e){$('#tm').textContent='불러오기 실패';return}
+    }
+    au.src=blobs[s.id];
+  }else au.src=s.url;
+  au.play();
+}
 au.ontimeupdate=()=>{if(!cur)return;$('#sl').value=au.currentTime/cur.dur*1000;$('#tm').textContent=fmt(au.currentTime)+' / '+fmt(cur.dur)};
 au.onplay=()=>$('#pp').textContent='⏸';au.onpause=()=>$('#pp').textContent='▶';
 $('#sl').oninput=e=>{if(cur)au.currentTime=e.target.value/1000*cur.dur};
@@ -315,6 +332,7 @@ async function enc(s){
   }
   out.push(m.flush());return new Blob(out,{type:'audio/mpeg'});
 }
+const b64=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(b)});
 const upl=(r,blob,cb)=>new Promise((res,rej)=>{
   const t=uploadBytesResumable(r,blob,{contentType:'audio/mpeg'});
   t.on('state_changed',x=>cb(Math.round(x.bytesTransferred/x.totalBytes*100)),rej,res)});
@@ -323,15 +341,24 @@ async function publish(s,btn){
   btn.disabled=true;
   try{
     btn.textContent='mp3 변환 중…';const blob=await enc(s);await ensureSpace(blob.size);
-    const path=`songs/${date}/${Date.now()}.mp3`,r=ref(sto,path);
-    await upl(r,blob,p=>btn.textContent='업로드 중 '+p+'%');
-    const u=await getDownloadURL(r);
-    const data={date,name:s.name,url:u,path,dur:s.e-s.s,size:blob.size,visible:true,stars:0,created:Date.now()};
-    const d=await addDoc(collection(db,'songs'),data);songs.push({id:d.id,...data});
+    const data={date,name:s.name,dur:s.e-s.s,size:blob.size,visible:true,stars:0,created:Date.now()};let id;
+    if(STORE==='fs'){
+      const sr=doc(collection(db,'songs')),n=Math.ceil(blob.size/PART);
+      for(let k=0;k<n;k++){
+        btn.textContent=`업로드 중 ${k+1}/${n}`;
+        await setDoc(doc(db,'songs',sr.id,'parts',String(k).padStart(3,'0')),{i:k,d:await b64(blob.slice(k*PART,(k+1)*PART))});
+      }
+      Object.assign(data,{store:'fs',parts:n});await setDoc(sr,data);id=sr.id;
+    }else{
+      const path=`songs/${date}/${Date.now()}.mp3`,r=ref(sto,path);
+      await upl(r,blob,p=>btn.textContent='업로드 중 '+p+'%');
+      Object.assign(data,{url:await getDownloadURL(r),path});id=(await addDoc(collection(db,'songs'),data)).id;
+    }
+    songs.push({id,...data});
     s.done=true;st(`"${s.name}" 노출 완료`);renderS();renderU();renderM();
   }catch(err){
     btn.disabled=false;btn.textContent='🔊 이 곡 노출하기';
-    st('업로드 실패: '+(err.code||'')+' '+err.message+' — Storage 설정/네트워크를 확인해 주세요');
+    st('업로드 실패: '+(err.code||'')+' '+err.message+' — Firestore 규칙/네트워크를 확인해 주세요');
   }
 }
 
